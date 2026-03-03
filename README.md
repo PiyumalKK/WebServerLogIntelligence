@@ -491,24 +491,3 @@ az storage account delete --name weblogstorageacct --resource-group WebLogAnalys
 
 ---
 
-## Team Members
-
-| Name | Registration Number | Role |
-|------|---------------------|------|
-| Member 1 | EG/20XX/XXXX | MapReduce Logic & Development |
-| Member 2 | EG/20XX/XXXX | Azure HDInsight Setup & Execution |
-| Member 3 | EG/20XX/XXXX | Documentation & Results Analysis |
-
----
-
-## References
-
-- Dataset: [Web Server Access Logs - Kaggle](https://www.kaggle.com/datasets/eliasdabbas/web-server-access-logs)
-- Original Source: Zaker, Farzin, 2019, "Online Shopping Store - Web Server Logs", Harvard Dataverse
-- [Apache Hadoop Documentation](https://hadoop.apache.org/docs/stable/)
-- [Azure HDInsight Documentation](https://docs.microsoft.com/en-us/azure/hdinsight/)
-- [MapReduce Tutorial](https://hadoop.apache.org/docs/stable/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html)
-
----
-
-> **📌 Note**: Remember to capture screenshots of your Azure Portal showing the HDInsight cluster, job execution logs, and output results as evidence for submission.
