@@ -309,11 +309,11 @@ ssh sshuser@weblog-hadoop-cluster-ssh.azurehdinsight.net
 #### Step 3: Verify the data is accessible
 
 ```bash
-# List files in the input directory on Azure Blob Storage (WASB)
-hdfs dfs -ls wasb:///input/
+# List files in the input directory on Azure Blob Storage (WASBS)
+hdfs dfs -ls wasbs:///input/
 
 # Check file size
-hdfs dfs -du -h wasb:///input/access.log
+hdfs dfs -du -h wasbs:///input/access.log
 ```
 
 #### Step 4: Run individual analyses
@@ -321,55 +321,49 @@ hdfs dfs -du -h wasb:///input/access.log
 ```bash
 # ---- Analysis 1: HTTP Status Code Distribution ----
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  statuscode wasb:///input/access.log wasb:///output/statuscode
+  statuscode wasbs:///input/access.log wasbs:///output/statuscode
 
 # ---- Analysis 2: Top 10 IP Addresses ----
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  topips wasb:///input/access.log wasb:///output/topips
+  topips wasbs:///input/access.log wasbs:///output/topips
 
 # ---- Analysis 3: Hourly Traffic Pattern ----
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  hourly wasb:///input/access.log wasb:///output/hourly
+  hourly wasbs:///input/access.log wasbs:///output/hourly
 
 # ---- Analysis 4: Top 10 Most Accessed URLs ----
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  topurls wasb:///input/access.log wasb:///output/topurls
+  topurls wasbs:///input/access.log wasbs:///output/topurls
 
 # ---- Analysis 5: HTTP Method Distribution ----
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  httpmethod wasb:///input/access.log wasb:///output/httpmethod
+  httpmethod wasbs:///input/access.log wasbs:///output/httpmethod
 ```
 
 #### Step 5: Run ALL analyses at once
 
 ```bash
 hadoop jar WebServerLogIntelligence-1.0.jar \
-  com.weblog.driver.LogAnalysisDriver \
-  all wasb:///input/access.log wasb:///output/all
+  all wasbs:///input/access.log wasbs:///output
 ```
 
 #### Step 6: View the results
 
 ```bash
 # View Status Code results
-hdfs dfs -cat wasb:///output/statuscode/part-r-00000
+hdfs dfs -cat wasbs:///output/statuscode/part-r-00000
 
 # View Top IPs results
-hdfs dfs -cat wasb:///output/topips/part-r-00000
+hdfs dfs -cat wasbs:///output/topips/part-r-00000
 
 # View Hourly Traffic results
-hdfs dfs -cat wasb:///output/hourly/part-r-00000
+hdfs dfs -cat wasbs:///output/hourly/part-r-00000
 
 # View Top URLs results
-hdfs dfs -cat wasb:///output/topurls/part-r-00000
+hdfs dfs -cat wasbs:///output/topurls/part-r-00000
 
 # View HTTP Method results
-hdfs dfs -cat wasb:///output/httpmethod/part-r-00000
+hdfs dfs -cat wasbs:///output/httpmethod/part-r-00000
 ```
 
 #### Step 7: Download results to local machine
@@ -466,8 +460,8 @@ The analysis of the web server access logs from the Iranian ecommerce website (z
 |-------|----------|
 | `mvn clean package` fails | Ensure Java 8+ and Maven 3.6+ are installed. Run `java -version` and `mvn -version`. |
 | JAR not found on cluster | Verify SCP upload completed successfully. Check with `ls -la ~/WebServerLogIntelligence-1.0.jar`. |
-| Output directory exists error | Delete existing output: `hdfs dfs -rm -r wasb:///output/statuscode` before re-running. |
-| No input files found | Verify upload: `hdfs dfs -ls wasb:///input/`. Ensure the access.log file exists. |
+| Output directory exists error | Delete existing output: `hdfs dfs -rm -r wasbs:///output/statuscode` before re-running. |
+| No input files found | Verify upload: `hdfs dfs -ls wasbs:///input/`. Ensure the access.log file exists. |
 | Cluster creation fails | Check Azure subscription quota. Try a different region. Ensure password meets complexity requirements. |
 | Out of memory error | Increase mapper/reducer memory: Add `-D mapreduce.map.memory.mb=4096` to the hadoop command. |
 
