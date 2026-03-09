@@ -292,21 +292,36 @@ Get-Content output/statuscode/part-r-00000
 
 ### Option B: Running on Azure HDInsight
 
-#### Step 1: Upload the JAR to the cluster
-
-```bash
-# SCP the JAR file to the HDInsight cluster head node
-scp target/WebServerLogIntelligence-1.0.jar \
-  sshuser@weblog-hadoop-cluster-ssh.azurehdinsight.net:~/
-```
-
-#### Step 2: SSH into the cluster
+#### Step 1: SSH into the cluster
 
 ```bash
 ssh sshuser@weblog-hadoop-cluster-ssh.azurehdinsight.net
 ```
 
-#### Step 3: Verify the data is accessible
+#### Step 2: Download the JAR and dataset from Azure Blob Storage
+
+```bash
+# Create a working directory
+mkdir ~/cloud_project && cd ~/cloud_project
+
+# Download the pre-built JAR file
+hdfs dfs -get wasbs://jar-files@clouddataset.blob.core.windows.net/WebServerLogIntelligence-1.0.jar .
+
+# Download the dataset
+hdfs dfs -get wasbs://dataset@clouddataset.blob.core.windows.net/access.log .
+
+# Verify both files
+ls -lh
+```
+
+#### Step 3: Upload the dataset to HDFS input directory
+
+```bash
+hdfs dfs -mkdir -p wasbs:///input
+hdfs dfs -put access.log wasbs:///input/access.log
+```
+
+#### Step 4: Verify the data is accessible
 
 ```bash
 # List files in the input directory on Azure Blob Storage (WASBS)

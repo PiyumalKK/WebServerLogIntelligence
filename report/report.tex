@@ -86,7 +86,7 @@
 This project implements a Java-based MapReduce solution that processes approximately 3.3\,GB of Apache web server access logs to extract meaningful intelligence about web traffic patterns. Unlike a local Hadoop installation, the solution runs on \textbf{Azure HDInsight}, a fully managed cloud-based Hadoop cluster, demonstrating true distributed computing at scale.
 
 Five distinct MapReduce analyses are performed on the dataset:
-\begin{enumerate}[nosep]
+\begin{enumerate}
     \item \textbf{HTTP Status Code Distribution} --- counts occurrences of each HTTP status code (200, 301, 404, 500, etc.).
     \item \textbf{Top 10 IP Addresses} --- identifies the most active visitors/bots by request count.
     \item \textbf{Hourly Traffic Pattern} --- reveals peak and off-peak hours across a 24-hour window.
@@ -196,7 +196,7 @@ Instead of installing Hadoop locally, we provisioned a fully managed \textbf{Azu
     \item \textbf{Create a Resource Group} and an Azure Storage Account with a Blob container.
     \item \textbf{Upload the dataset} (\texttt{access.log}, $\sim$3.3\,GB) to Azure Blob Storage.
     \item \textbf{Create an HDInsight Hadoop cluster} (Hadoop 3.1 / HDInsight 5.x) connected to the storage account. We used 2 head nodes (D12\,v2) and 2 worker nodes (D4\,v2).
-    \item \textbf{Upload the JAR} via SCP and SSH into the cluster head node.
+    \item \textbf{Upload the dataset and JAR} to a separate Azure Blob Storage account, then pull them onto the cluster head node using \texttt{hdfs dfs -get}.
     \item \textbf{Run the MapReduce jobs} using \texttt{hadoop jar} commands, reading from and writing to \texttt{wasbs://} (Azure Blob Storage backed HDFS).
 \end{enumerate}
 
@@ -228,20 +228,20 @@ Instead of installing Hadoop locally, we provisioned a fully managed \textbf{Azu
     \label{fig:maven-build}
 \end{figure}
 
-\subsection{Uploading Data and JAR to HDInsight}
+\subsection{Downloading Data and JAR to HDInsight}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{images/blob-storage-upload.png}
-    \caption{Dataset uploaded to Azure Blob Storage container.}
+    \caption{Dataset and JAR uploaded to Azure Blob Storage containers.}
     \label{fig:blob-upload}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{images/scp-jar-upload.png}
-    \caption{JAR file uploaded to the HDInsight head node via SCP.}
-    \label{fig:scp-upload}
+    \includegraphics[width=0.95\textwidth]{images/hdfs-get-files.png}
+    \caption{JAR and dataset downloaded to the HDInsight head node via \texttt{hdfs dfs -get}.}
+    \label{fig:hdfs-get}
 \end{figure}
 
 \subsection{Running All Five MapReduce Jobs}
@@ -318,9 +318,136 @@ Instead of installing Hadoop locally, we provisioned a fully managed \textbf{Azu
 % ============================================================================
 \section{Results Summary \& Interpretation}
 
-Processing $\sim$10\,million log records (3.3\,GB) from an Iranian e-commerce website revealed several clear patterns. The \textbf{HTTP status code distribution} showed that the overwhelming majority of requests returned \texttt{200 OK}, confirming a healthy server, while a notable number of \texttt{301} redirects suggested active URL restructuring. A small but significant tail of \texttt{404} and \texttt{500} errors points to missing resources and occasional server-side failures worth investigating. The \textbf{top 10 IP addresses} were dominated by well-known search-engine crawlers (Googlebot, Bingbot, AhrefsBot), indicating heavy bot traffic that could be separated from genuine user traffic using the User-Agent field. The \textbf{hourly traffic analysis} exposed a clear diurnal pattern aligned with Iranian Standard Time (UTC+3:30), with peak traffic during afternoon/evening hours and minimal activity in the early morning --- typical of a consumer-facing e-commerce site.
+Processing $\sim$10\,million log records (3.3\,GB) from the Iranian e-commerce website (zanbil.ir) on a 2-worker HDInsight cluster produced the following results.
 
-The \textbf{top accessed URLs} highlighted the most popular product and category filter pages, providing direct insight into customer interests. The \textbf{HTTP method breakdown} showed an expected dominance of \texttt{GET} requests, consistent with a read-heavy e-commerce browsing pattern. From a performance standpoint, running five chained MapReduce jobs on a 2-worker HDInsight cluster completed within a reasonable time frame, and using \texttt{SumReducer} as a combiner noticeably reduced shuffle I/O. To expand this analysis, one could incorporate the User-Agent field to separate bot vs.\ human traffic, add a response-size aggregation job to detect bandwidth hotspots, or stream the analysis in near-real-time using Apache Spark Streaming on HDInsight.
+\subsection{HTTP Status Code Distribution}
+
+\begin{table}[H]
+\centering
+\caption{HTTP status code counts}
+\begin{tabular}{@{}lr@{}}
+\hline
+\textbf{Status Code} & \textbf{Count} \\ \hline
+200 & 9\,579\,824 \\
+206 & 3 \\
+301 & 67\,552 \\
+302 & 199\,835 \\
+304 & 340\,228 \\
+400 & 318 \\
+401 & 323 \\
+403 & 5\,634 \\
+404 & 105\,011 \\
+405 & 6 \\
+408 & 112 \\
+499 & 50\,852 \\
+500 & 14\,266 \\
+502 & 798 \\
+504 & 103 \\
+\hline
+\end{tabular}
+\end{table}
+
+The vast majority of requests returned \texttt{200~OK} (92.3\%), confirming a healthy server. \texttt{304~Not Modified} (340K) indicates effective browser caching, while \texttt{302} redirects (200K) and \texttt{301} redirects (68K) suggest active URL restructuring. The 105K \texttt{404} errors point to broken links or removed product pages. Server-side failures (\texttt{500}: 14K, \texttt{502}: 798, \texttt{504}: 103) are relatively rare but warrant monitoring.
+
+\subsection{Top 10 IP Addresses}
+
+\begin{table}[H]
+\centering
+\caption{Top 10 IP addresses by request count}
+\begin{tabular}{@{}lr@{}}
+\hline
+\textbf{IP Address} & \textbf{Requests} \\ \hline
+66.249.66.194   & 353\,483 \\
+66.249.66.91    & 314\,522 \\
+151.239.241.163 & 92\,473 \\
+66.249.66.92    & 88\,332 \\
+91.99.30.32     & 45\,973 \\
+104.222.32.91   & 42\,058 \\
+91.99.72.15     & 38\,694 \\
+91.99.47.57     & 38\,609 \\
+5.78.190.233    & 37\,203 \\
+195.181.168.181 & 27\,979 \\
+\hline
+\end{tabular}
+\end{table}
+
+The top three IPs in the \texttt{66.249.66.*} range belong to Googlebot, collectively making over 756K requests. The remaining IPs include a mix of other crawlers and heavy Iranian users (e.g.\ \texttt{151.239.*}, \texttt{91.99.*} ranges).
+
+\subsection{Hourly Traffic Pattern}
+
+\begin{table}[H]
+\centering
+\caption{Hourly traffic distribution (24-hour window)}
+\footnotesize
+\begin{tabular}{@{}lr|lr@{}}
+\hline
+\textbf{Hour} & \textbf{Requests} & \textbf{Hour} & \textbf{Requests} \\ \hline
+00:00--00:59 & 344\,791 & 12:00--12:59 & 725\,344 \\
+01:00--01:59 & 227\,495 & 13:00--13:59 & 724\,618 \\
+02:00--02:59 & 126\,400 & 14:00--14:59 & 692\,401 \\
+03:00--03:59 & 79\,118  & 15:00--15:59 & 649\,646 \\
+04:00--04:59 & 76\,475  & 16:00--16:59 & 575\,781 \\
+05:00--05:59 & 70\,666  & 17:00--17:59 & 548\,887 \\
+06:00--06:59 & 92\,854  & 18:00--18:59 & 558\,680 \\
+07:00--07:59 & 184\,619 & 19:00--19:59 & 566\,232 \\
+08:00--08:59 & 381\,539 & 20:00--20:59 & 478\,677 \\
+09:00--09:59 & 563\,865 & 21:00--21:59 & 415\,432 \\
+10:00--10:59 & 672\,843 & 22:00--22:59 & 462\,352 \\
+11:00--11:59 & 731\,575 & 23:00--23:59 & 414\,575 \\
+\hline
+\end{tabular}
+\end{table}
+
+Traffic follows a clear diurnal pattern aligned with Iranian Standard Time (UTC+3:30). Peak hours are 11:00--13:59 ($\sim$725K requests/hour), consistent with midday browsing on an e-commerce site. The quietest window is 04:00--05:59 ($\sim$70K requests/hour), reaching only $\sim$10\% of peak load.
+
+\subsection{Top 10 Most Accessed URLs}
+
+\begin{table}[H]
+\centering
+\caption{Top 10 URLs by request count}
+\footnotesize
+\begin{tabular}{@{}lr@{}}
+\hline
+\textbf{URL} & \textbf{Requests} \\ \hline
+\texttt{/settings/logo}                          & 352\,047 \\
+\texttt{/static/css/font/wyekan/font.woff}       & 280\,176 \\
+\texttt{/rapidGrails/jsonList}                    & 196\,912 \\
+\texttt{/static/images/guarantees/bestPrice.png}  & 138\,010 \\
+\texttt{/static/images/guarantees/fastDelivery.png} & 125\,689 \\
+\texttt{/static/images/guarantees/warranty.png}   & 124\,127 \\
+\texttt{/static/images/guarantees/goodShopping.png} & 116\,653 \\
+\texttt{/site/alexaGooleAnalitic}                 & 103\,798 \\
+\texttt{/favicon.ico}                             & 102\,815 \\
+\texttt{/static/images/guarantees/support.png}    & 98\,460 \\
+\hline
+\end{tabular}
+\end{table}
+
+Static assets dominate the top URLs --- logo, font files, and guarantee badge images are loaded on virtually every page view. The \texttt{/rapidGrails/jsonList} endpoint (197K hits) is likely an AJAX API call for product listing, while \texttt{/site/alexaGooleAnalitic} (104K) appears to be a third-party analytics integration.
+
+\subsection{HTTP Method Distribution}
+
+\begin{table}[H]
+\centering
+\caption{HTTP method counts}
+\begin{tabular}{@{}lr@{}}
+\hline
+\textbf{Method} & \textbf{Count} \\ \hline
+GET      & 10\,189\,772 \\
+POST     & 139\,155 \\
+HEAD     & 34\,501 \\
+OPTIONS  & 1\,424 \\
+CONNECT  & 10 \\
+PROPFIND & 3 \\
+\hline
+\end{tabular}
+\end{table}
+
+\texttt{GET} requests account for 98.3\% of all traffic, consistent with a read-heavy e-commerce browsing pattern. \texttt{POST} requests (1.3\%) correspond to form submissions, cart operations, and login actions. \texttt{HEAD} requests (34.5K) are predominantly from monitoring tools and crawlers checking resource availability.
+
+\subsection{Key Takeaways}
+
+Using \texttt{SumReducer} as both a combiner and reducer significantly reduced shuffle I/O. All five chained MapReduce jobs completed successfully on the 2-worker HDInsight cluster. Potential extensions include separating bot vs.\ human traffic using the User-Agent field, adding response-size aggregation to detect bandwidth hotspots, or migrating to Apache Spark on HDInsight for near-real-time analysis.
 
 % ============================================================================
 %                        8. SOURCE CODE & LINKS
