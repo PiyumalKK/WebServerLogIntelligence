@@ -35,3 +35,20 @@ Thumbs.db
 
 # Hadoop output
 output/
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
+report/*.toc
+report/*.lof
+report/*.lot
+report/*.bbl
+report/*.blg
+report/*.pdf
+
+# Winutils (large binaries)
+winutils/
