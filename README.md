@@ -46,7 +46,6 @@ The project demonstrates the power of distributed computing for processing large
 | **Format** | Apache Combined Log Format |
 | **Origin** | Iranian ecommerce website (zanbil.ir) |
 | **Records** | ~10 million+ log entries |
-| **License** | CC0: Public Domain |
 
 ### Log Format (Apache Combined Log Format)
 
