@@ -109,8 +109,7 @@ WebServerLogIntelligence/
 |------|---------|---------|
 | **Java JDK** | 1.8+ | Compile and run Java code |
 | **Apache Maven** | 3.6+ | Build management and dependency resolution |
-| **Azure CLI** | Latest | Manage Azure resources |
-| **Azure Subscription** | Active | Create HDInsight cluster |
+| **Azure Subscription** | Active | Create HDInsight cluster via Azure Portal |
 
 ### Install Prerequisites
 
@@ -121,10 +120,9 @@ javac -version
 
 # Verify Maven
 mvn -version
-
-# Install Azure CLI (if not installed)
-# Download from: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli-windows
 ```
+
+> **Note**: All Azure resource provisioning is done through the [Azure Portal](https://portal.azure.com).
 
 ---
 
@@ -139,110 +137,72 @@ cd WebServerLogIntelligence
 # Download the dataset from Kaggle
 # Go to: https://www.kaggle.com/datasets/eliasdabbas/web-server-access-logs
 # Click "Download" and extract the access.log file
-
-# Place the dataset into the project (for reference)
-# The actual file will be uploaded to Azure Blob Storage / HDFS
 ```
 
 ### 2. Azure HDInsight Cluster Setup
 
+> **Note**: All Azure resources are created via the [Azure Portal](https://portal.azure.com). 
+
 #### Step 1: Login to Azure Portal
 
-```bash
-# Login via Azure CLI
-az login
-
-# Set your subscription (if you have multiple)
-az account set --subscription "<your-subscription-id>"
-```
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Sign in with your Azure account
 
 #### Step 2: Create a Resource Group
 
-```bash
-az group create \
-  --name WebLogAnalysis-RG \
-  --location southeastasia
-```
+1. In the Azure Portal, click **"Create a resource"**
+2. Click **"Create"**
+3. Configure:
+   - **Resource group name**: `Cloud-Computing`
+   - **Region**: East US
+4. Click **"Review + create"** → **"Create"**
 
 #### Step 3: Create an Azure Storage Account
 
-```bash
-az storage account create \
-  --name weblogstorageacct \
-  --resource-group WebLogAnalysis-RG \
-  --location southeastasia \
-  --sku Standard_LRS
+1. Click **"Create a resource"** → Search **"Storage account"**
+2. Click **"Create"**
+3. Configure:
+   - **Resource group**: `Cloud-Computing`
+   - **Storage account name**: `clouddataset`
+   - **Region**: East US
+   - **Redundancy**: LRS (Locally-redundant storage)
+4. Click **"Review + create"** → **"Create"**
 
-# Get the storage account key
-az storage account keys list \
-  --account-name weblogstorageacct \
-  --resource-group WebLogAnalysis-RG
-```
+#### Step 4: Create Blob Containers
 
-#### Step 4: Create a Blob Container
+1. Navigate to your storage account (`clouddataset`)
+2. In the left menu, click **"Containers"** (under Data storage)
+3. Click **"+ Container"**
+4. Create the following containers:
+   - `dataset` — for the input log file
+   - `jar-files` — for the MapReduce JAR file
+5. Click **"Create"** for each
 
-```bash
-az storage container create \
-  --name weblogdata \
-  --account-name weblogstorageacct \
-  --account-key <your-storage-key>
-```
+#### Step 5: Upload Dataset and JAR to Azure Blob Storage
 
-#### Step 5: Upload Dataset to Azure Blob Storage
-
-```bash
-# Upload the access.log file
-az storage blob upload \
-  --account-name weblogstorageacct \
-  --container-name weblogdata \
-  --name input/access.log \
-  --file ./access.log \
-  --account-key <your-storage-key>
-```
+1. Navigate to your storage account (`clouddataset`) → **"Containers"** → `dataset`
+2. Click **"Upload"** → Browse and select the `access.log` file → Click **"Upload"**
+3. Go back to **"Containers"** → `jar-files`
+4. Click **"Upload"** → Browse and select `WebServerLogIntelligence-1.0.jar` → Click **"Upload"**
 
 #### Step 6: Create HDInsight Hadoop Cluster
-
-**Via Azure Portal (Recommended for screenshots):**
 
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Click **"Create a resource"** → Search **"HDInsight"**
 3. Click **"Create"**
 4. Configure:
-   - **Cluster name**: `weblog-hadoop-cluster`
+   - **Cluster name**: `serverlog`
    - **Cluster type**: Hadoop
    - **Version**: Hadoop 3.1 (HDInsight 5.x)
    - **Login**: Set username and password
    - **SSH**: Set SSH username and password
-   - **Resource group**: `WebLogAnalysis-RG`
-   - **Location**: Southeast Asia
-5. **Storage**: Select existing storage account `weblogstorageacct`
+   - **Resource group**: `Cloud-Computing`
+   - **Location**: East US
+5. **Storage**: Select existing storage account `clouddataset`
 6. **Cluster size**: 
    - Head nodes: 2 × D12 v2
    - Worker nodes: 2 × D4 v2 (minimum for cost savings)
 7. Click **"Create"** (takes ~20 minutes to provision)
-
-**Via Azure CLI:**
-
-```bash
-az hdinsight create \
-  --name weblog-hadoop-cluster \
-  --resource-group WebLogAnalysis-RG \
-  --type hadoop \
-  --component-version Hadoop=3.1 \
-  --http-user admin \
-  --http-password <YourPassword123!> \
-  --ssh-user sshuser \
-  --ssh-password <YourSSHPassword123!> \
-  --storage-account weblogstorageacct \
-  --storage-account-key <your-storage-key> \
-  --storage-container weblogdata \
-  --workernode-count 2 \
-  --workernode-size Standard_D4_v2 \
-  --headnode-size Standard_D12_v2 \
-  --location southeastasia
-```
-
-> ⚠️ **Cost Warning**: HDInsight clusters incur costs while running. **Delete the cluster** after completing your analysis to avoid charges.
 
 ---
 
@@ -252,22 +212,10 @@ az hdinsight create \
 # Navigate to the project directory
 cd WebServerLogIntelligence
 
-# Clean and build the project (creates uber JAR)
+# Clean and build the project
 mvn clean package
 
-# The JAR file will be at:
-# target/WebServerLogIntelligence-1.0.jar
 ```
-
-If the build is successful, you should see:
-
-```
-[INFO] BUILD SUCCESS
-[INFO] -----------------------------------------------
-[INFO] Total time: X.XXX s
-```
-
----
 
 ## Running the MapReduce Jobs
 
@@ -288,26 +236,31 @@ java -cp "target/WebServerLogIntelligence-1.0.jar;target/lib/*" \
 # 3. View the generated results
 Get-Content output/statuscode/part-r-00000
 ```
-*(Note for Mac/Linux users: change the `;` to `:` in the classpath `-cp` argument)*
 
 ### Option B: Running on Azure HDInsight
 
-#### Step 1: SSH into the cluster
+#### Step 1: Connect to the cluster via Azure Cloud Shell
+
+Open **Azure Cloud Shell** from the Azure Portal (click the `>_` icon in the top toolbar), then SSH into the cluster:
 
 ```bash
-ssh sshuser@weblog-hadoop-cluster-ssh.azurehdinsight.net
+ssh sshuser@serverlog-ssh.azurehdinsight.net
 ```
 
-#### Step 2: Download the JAR and dataset from Azure Blob Storage
+#### Step 2: Copy the JAR and dataset from Blob Storage to the cluster
+
+> **Note**: This step is done via **Azure Cloud Shell** (accessed from the Azure Portal toolbar).
+
+Open **Azure Cloud Shell** from the Azure Portal (click the `>_` icon in the top toolbar), then run:
 
 ```bash
 # Create a working directory
 mkdir ~/cloud_project && cd ~/cloud_project
 
-# Download the pre-built JAR file
+# Download the pre-built JAR file from Blob Storage
 hdfs dfs -get wasbs://jar-files@clouddataset.blob.core.windows.net/WebServerLogIntelligence-1.0.jar .
 
-# Download the dataset
+# Download the dataset from Blob Storage
 hdfs dfs -get wasbs://dataset@clouddataset.blob.core.windows.net/access.log .
 
 # Verify both files
@@ -381,20 +334,14 @@ hdfs dfs -cat wasbs:///output/topurls/part-r-00000
 hdfs dfs -cat wasbs:///output/httpmethod/part-r-00000
 ```
 
-#### Step 7: Download results to local machine
+#### Step 7: Download results
 
-```bash
-# From your local machine
-mkdir results
+You can download the output files directly from the Azure Portal:
 
-# Download each result
-az storage blob download-batch \
-  --account-name weblogstorageacct \
-  --source weblogdata \
-  --pattern "output/*" \
-  --destination ./results \
-  --account-key <your-storage-key>
-```
+1. Navigate to your storage account (`clouddataset`) → **"Containers"**
+2. Browse to the output container/folder
+3. Click on each result folder (e.g., `statuscode/`, `topips/`, etc.)
+4. Select the `part-r-00000` file and click **"Download"**
 
 ---
 
@@ -469,34 +416,16 @@ The analysis of the web server access logs from the Iranian ecommerce website (z
 
 ---
 
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| `mvn clean package` fails | Ensure Java 8+ and Maven 3.6+ are installed. Run `java -version` and `mvn -version`. |
-| JAR not found on cluster | Verify SCP upload completed successfully. Check with `ls -la ~/WebServerLogIntelligence-1.0.jar`. |
-| Output directory exists error | Delete existing output: `hdfs dfs -rm -r wasbs:///output/statuscode` before re-running. |
-| No input files found | Verify upload: `hdfs dfs -ls wasbs:///input/`. Ensure the access.log file exists. |
-| Cluster creation fails | Check Azure subscription quota. Try a different region. Ensure password meets complexity requirements. |
-| Out of memory error | Increase mapper/reducer memory: Add `-D mapreduce.map.memory.mb=4096` to the hadoop command. |
-
----
-
 ## Clean Up Azure Resources
 
 **Important**: Delete resources after completion to avoid ongoing costs.
 
-```bash
-# Delete the entire resource group (cluster + storage)
-az group delete --name WebLogAnalysis-RG --yes
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to **"Resource groups"** → `Cloud-Computing`
+3. Click **"Delete resource group"**
+4. Type the resource group name to confirm and click **"Delete"**
 
-# Or delete individually:
-# Delete the HDInsight cluster
-az hdinsight delete --name weblog-hadoop-cluster --resource-group WebLogAnalysis-RG
-
-# Delete storage account
-az storage account delete --name weblogstorageacct --resource-group WebLogAnalysis-RG
-```
+> This will delete the HDInsight cluster, storage account, and all associated resources at once.
 
 ---
 
