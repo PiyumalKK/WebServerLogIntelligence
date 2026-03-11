@@ -20,12 +20,11 @@
    - [Azure HDInsight Setup](#2-azure-hdinsight-cluster-setup)
 7. [Building the Project](#building-the-project)
 8. [Running the MapReduce Jobs](#running-the-mapreduce-jobs)
-   - [Local Testing](#option-a-local-standalone-testing)
+   - [Local Testing](#option-a-local--standalone-testing-no-hadoop-required)
    - [Azure HDInsight](#option-b-running-on-azure-hdinsight)
 9. [Expected Output](#expected-output)
 10. [Results Interpretation](#results-interpretation)
-11. [Troubleshooting](#troubleshooting)
-12. [Team Members](#team-members)
+11. [Clean Up Azure Resources](#clean-up-azure-resources)
 
 ---
 
